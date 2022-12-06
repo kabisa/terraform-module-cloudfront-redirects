@@ -1,0 +1,8 @@
+{
+  "name": "terraform-module-cloudfront-redirects",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Rik Tonnard <rik.tonnard@kabisa.nl>",
+  "license": "MIT",
+  "type": "module"
+}
