@@ -1,25 +1,35 @@
 class Rule {
-  constructor(requestMethod, requestPathRegExp, responseUri, responseStatus) {
-    this.requestMethod = requestMethod;
-    this.requestUriRegExp = requestUriRegExp;
-    this.responseUri = responseUri;
-    this.responseStatus = responseStatus;
+  constructor({ match, status, url }) {
+    this.match = {
+      method: match.method,
+      url: this._urlToRegExp(match.url)
+    };
+
+    this.status = status;
+    this.url = url;
   }
 
   matches(request) {
-    return this._methodMatches(request) && this._uriMatches(request);
+    return this._methodMatches(request) && this._urlMatches(request);
   }
 
-  targetFor(request) {
-    return request.uri.replace(this.requestUriRegExp, this.responseUri);
+  responseLocation(request) {
+    return request.url.replace(this.match.url, this.url);
   }
 
   _methodMatches(request) {
-    return this.requestMethod === "*" || request.method == this.requestMethod;
+    return !this.match.method || this.match.method === request.method;
   }
 
-  _uriMatches(request) {
-    return request.uri.match(this.requestPathRegExp);
+  _urlMatches(request) {
+    return request.url.match(this.match.url);
+  }
+
+  _urlToRegExp(url) {
+    const schemeRegExp = /^[a-zA-Z][a-zA-Z0-9+-.]*:\/\//;
+    const urlWithoutScheme = url.replace(schemeRegExp, "");
+
+    return new RegExp(`^${urlWithoutScheme}$`);
   }
 }
 

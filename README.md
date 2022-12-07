@@ -29,19 +29,33 @@ module "redirects" {
   source        = "../../terraform-module-cloudfront-redirects"
   label_context = module.redirects_label.context
 
-  config = <<-EOF
-    GET example.org/index.html 301 https://example.com/
-    GET example.org/(.*)       301 https://example.com/$1
+  redirect_rules = [
+    {
+      match = {
+        method = "GET"
+        url    = "https://example.org/index.html"
+      }
 
-    GET example.net/index.html 301 https://example.com/
-    GET example.net/(.*)       301 https://example.com/$1
-  EOF
+      status = 301
+      url    = "https://example.com/"
+    },
+    {
+      match = {
+        method = "GET"
+        url    = "https://example.org/(.*)"
+      }
+
+      status = 301
+      url    = "https://example.com/$1"
+    }
+  ]
 }
 
 resource "aws_cloudfront_distribution" "redirects" {
   enabled     = true
   comment     = "Redirects distribution"
   price_class = "PriceClass_100"
+  aliases     = ["example.org"]
 
   origin {
     domain_name = "www.example.org"
@@ -118,8 +132,8 @@ resource "aws_cloudfront_distribution" "redirects" {
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_config"></a> [config](#input\_config) | Formatted file containing the redirect rules. This is simple text files with<br>space separated fields per line. Whitespace only lines are ignored.<br><br>The following fields should be defined on each line. The first two fields<br>are used to match the request, the last two fields are used to build the<br>response.<br><br>* Request method: the rule only applies if the method of the request matches<br>  this this field exactly. Specify a literal * to match all request methods.<br>* Request URI: the rule only applies if the request URI, excluding the<br>  protocol, matches this field as a regular expression. The field is<br>  compiled to a JavaScript RegExp, so this dialect applies. The full URL<br>  should match the regex, start and end of line matchers are not necessary.<br>* Response status code: HTTP status code for the response. This should be<br>  in the 3xx range, though this module does not validate if it is correct.<br>* Response URI: this URI will be used as the location header in the<br>  response. Any captured groups from the request path can be used in this<br>  URI according to the String.prototype.replace function in JavaScript.<br>  This field contains the full URI including the protocol.<br><br>When a request is processed by the lambda, each rule is evaluated in order<br>until one matches the request. This rule is applied and the other rules are<br>ignored.<br><br>An example of a valid configuration is:<br><br>  GET example.org/index.html 301 https://example.com/<br>  GET example.org/(.*)       301 https://example.com/$1<br><br>  GET example.net/index.html 301 https://example.com/<br>  GET example.net/(.*)       301 https://example.com/$1 | `string` | n/a | yes |
 | <a name="input_label_context"></a> [label\_context](#input\_label\_context) | Context for the null label which determines names of resources | `any` | n/a | yes |
+| <a name="input_redirect_rules"></a> [redirect\_rules](#input\_redirect\_rules) | Rules determine which URLs redirect to which other URLs.<br><br>The match object determines if a request matches the rule. Both the method<br>and URL should match. If no method is specified, all request methods<br>will match.<br><br>The match URL can be a regular expression. In this case, the beginning and<br>end of line matchers are added implicitly. The JavaScript regular expression<br>dialect should be used. Only the host and path of the URL are used to match<br>the request. All other parts, like the scheme, query and fragment are<br>ignored.<br><br>The status and URL determine where the client is redirected to. Both must be<br>set. The URL should include a scheme and can use any capturing groups<br>captured during the matching phase.<br><br>See documentation on JavaScript's String.prototype.replace to learn more<br>about JavaScript regular expressions and the usage of capturing groups in<br>the reponse URL. | <pre>list(<br>    object(<br>      {<br>        status = number<br>        url    = string<br><br>        match = object({<br>          method = optional(string)<br>          url    = string<br>        })<br>      }<br>    )<br>  )</pre> | n/a | yes |
 
 ## Outputs
 

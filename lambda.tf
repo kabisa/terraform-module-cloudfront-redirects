@@ -8,8 +8,8 @@ data "archive_file" "this" {
   output_file_mode = "0644"
 
   source {
-    content  = var.config
-    filename = "config"
+    content  = jsonencode(var.redirect_rules)
+    filename = "rules.json"
   }
 
   dynamic "source" {

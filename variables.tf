@@ -3,40 +3,64 @@ variable "label_context" {
   description = "Context for the null label which determines names of resources"
 }
 
-variable "config" {
-  type = string
+variable "redirect_rules" {
+  type = list(
+    object(
+      {
+        status = number
+        url    = string
+
+        match = object({
+          method = optional(string)
+          url    = string
+        })
+      }
+    )
+  )
 
   description = <<-EOF
-    Formatted file containing the redirect rules. This is simple text files with
-    space separated fields per line. Whitespace only lines are ignored.
+    Rules determine which URLs redirect to which other URLs.
 
-    The following fields should be defined on each line. The first two fields
-    are used to match the request, the last two fields are used to build the
-    response.
+    The match object determines if a request matches the rule. Both the method
+    and URL should match. If no method is specified, all request methods
+    will match.
 
-    * Request method: the rule only applies if the method of the request matches
-      this this field exactly. Specify a literal * to match all request methods.
-    * Request URI: the rule only applies if the request URI, excluding the
-      protocol, matches this field as a regular expression. The field is
-      compiled to a JavaScript RegExp, so this dialect applies. The full URL
-      should match the regex, start and end of line matchers are not necessary.
-    * Response status code: HTTP status code for the response. This should be
-      in the 3xx range, though this module does not validate if it is correct.
-    * Response URI: this URI will be used as the location header in the
-      response. Any captured groups from the request path can be used in this
-      URI according to the String.prototype.replace function in JavaScript.
-      This field contains the full URI including the protocol.
-
-    When a request is processed by the lambda, each rule is evaluated in order
-    until one matches the request. This rule is applied and the other rules are
+    The match URL can be a regular expression. In this case, the beginning and
+    end of line matchers are added implicitly. The JavaScript regular expression
+    dialect should be used. Only the host and path of the URL are used to match
+    the request. All other parts, like the scheme, query and fragment are
     ignored.
 
-    An example of a valid configuration is:
+    The status and URL determine where the client is redirected to. Both must be
+    set. The URL should include a scheme and can use any capturing groups
+    captured during the matching phase.
 
-      GET example.org/index.html 301 https://example.com/
-      GET example.org/(.*)       301 https://example.com/$1
-
-      GET example.net/index.html 301 https://example.com/
-      GET example.net/(.*)       301 https://example.com/$1
+    See documentation on JavaScript's String.prototype.replace to learn more
+    about JavaScript regular expressions and the usage of capturing groups in
+    the reponse URL.
   EOF
+
+  validation {
+    condition = alltrue([
+      for rule in var.redirect_rules :
+      rule.match.method == null ? true : contains(
+        [
+          "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE", "CONNECT",
+          "TRACE"
+        ],
+        rule.match.method
+      )
+    ])
+
+    error_message = "Request method should be an HTTP method, or be omitted"
+  }
+
+  validation {
+    condition = alltrue([
+      for rule in var.redirect_rules :
+      contains([301, 302, 303, 307, 308], rule.status)
+    ])
+
+    error_message = "Response status should be a valid redirect status code"
+  }
 }

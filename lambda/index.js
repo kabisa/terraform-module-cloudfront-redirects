@@ -1,25 +1,25 @@
-import { getConfig } from "./config.js";
+import getConfig from "./getConfig.js";
 
 const rules = getConfig();
 
 export const handler = (event, context, callback) => {
-  const request = event.Records[0].cf.request;
-  const headers = request.headers;
+  const cfRequest = event.Records[0].cf.request;
+  const headers = cfRequest.headers;
 
   const host = headers['host'][0].value;
-  const uri = `${host}${request.uri}`;
-  const normalizedRequest = { uri, method: request.method };
+  const url = `${host}${cfRequest.uri}`;
+  const request = { url, method: cfRequest.method };
 
-  const rule = rules.find(rule => rule.matches(normalizedRequest));
+  const rule = rules.find(rule => rule.matches(request));
 
   if (rule)
     callback(null, {
-      status: rule.responseStatus,
+      status: rule.status,
       headers: {
         location: [
           {
             key: "Location",
-            value: rule.targetFor(normalizedRequest)
+            value: rule.responseLocation(request)
           }
         ]
       }
