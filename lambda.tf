@@ -28,6 +28,6 @@ resource "aws_lambda_function" "this" {
   publish          = true
   role             = aws_iam_role.this.arn
   handler          = "index.handler"
-  runtime          = "nodejs16.x"
+  runtime          = "nodejs20.x"
   source_code_hash = filebase64sha256(data.archive_file.this.output_path)
 }
